@@ -14,14 +14,22 @@ _VERSION_DESCR = "Imapsync Status"
 _LOG_FILE_PATH = "imapsync-status.log"
 
 import argparse
-from turtle import left
 import colorlog
 import glob
 import logging
 import logging.handlers
 import os
 import re
+import rich
 import subprocess
+
+from rich import print
+from rich.live import Live
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCompleteColumn, TimeRemainingColumn
+from rich.table import Table
+
+from time import sleep
 
 
 # Program main class
@@ -78,9 +86,6 @@ class ImapsyncStatus:
 
     # Read a PID file
     def parse_pid_file(self, file_path):
-        msg = "Parsing PID file '{}' ...".format(file_path)
-        self.logger.info(msg)
-
         f = open(file_path, 'r')
         data = f.read()  
         user = re.search('imapsync-(.+).pid$', file_path)
@@ -108,7 +113,6 @@ class ImapsyncStatus:
 
     # Get sync status from a given log file line
     def get_sync_status(self, line):
-        print(line)
         if re.search('([0-9]+)\/([0-9]+) msgs left$', line, re.MULTILINE):
             return "syncing"
         else:
@@ -116,7 +120,6 @@ class ImapsyncStatus:
 
     # Get sync progress from a given log file line
     def get_sync_progress(self, line):
-        print(line)
         match = re.search('ETA: (.+) \+.+\s+([0-9]+)\/([0-9]+) msgs left$', line)
         if match:
             eta = match.group(1)
@@ -138,8 +141,6 @@ class ImapsyncStatus:
 
     # Handle & exec function called from main
     def handle(self):
-        self.logger.info("Imapsync Status starting ...")
-
         # Command line parser
         parser = argparse.ArgumentParser(
             description="Imapsync Status: imapsync-status.py"
@@ -154,19 +155,89 @@ class ImapsyncStatus:
 
         # Get PID files
         pid_files = self.get_pid_files()
+        imapsync_count = len(pid_files)
+
+        title = "Welcome to [dodger_blue1]Imapsync[/dodger_blue1] Status!"
+        print(Panel(title))
+
+        job_progress = Progress(
+            "{task.description}",
+            SpinnerColumn(),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeRemainingColumn(),
+            TextColumn("ETA: {task.fields[eta]}"),
+            TextColumn("[progress.percentage]{task.percentage:>3.2f}%"),
+        )
+
+        # Get PID files to build current jobs progress
+        jobs = {}
         for pid_file in pid_files:
             log_data = self.parse_pid_file(pid_file)
-            print(log_data)
-            log_file_path = log_data['log_file_path']
-            last_line = self.get_last_line(log_file_path)
-            
-            sync_status = self.get_sync_status(last_line)
-            print(sync_status)
-            if sync_status == "syncing":
-                sync_progress = self.get_sync_progress(last_line)
-                print(sync_progress)
-            
+            user = log_data['user']
+            job_title = "[green]{}".format(user)
 
+            # Add a job progress for the current user
+            jobs[user] = job_progress.add_task(job_title,
+                                               start=False,
+                                               total=None,
+                                               eta="?")
+
+        #total = sum(task.total for task in job_progress.tasks)
+        overall_progress = Progress()
+        overall_task = overall_progress.add_task("All Jobs", total=0)
+
+        progress_table = Table.grid(expand=True)
+        progress_table.add_row(
+            Panel(
+                job_progress,
+                title="[b]Jobs",
+                border_style="red",
+                padding=(1, 2)),
+        )
+        progress_table.add_row(
+            Panel(
+                overall_progress,
+                title="Overall Progress",
+                border_style="green", 
+                padding=(1, 2)
+        )
+)
+
+        overall_total = 0
+        with Live(progress_table, refresh_per_second=10):
+            while True:
+                sleep(1)
+
+                for pid_file in pid_files:
+                    log_data = self.parse_pid_file(pid_file)
+                    log_file_path = log_data['log_file_path']
+                    user = log_data['user']
+                    last_line = self.get_last_line(log_file_path)
+                    
+                    sync_status = self.get_sync_status(last_line)
+                    if sync_status == "syncing":
+                        sync_progress = self.get_sync_progress(last_line)
+                        eta = sync_progress['eta']
+                        transferred = sync_progress['transferred_messages']
+                        total = sync_progress['total_messages']
+
+                        job_progress.update(jobs[user],
+                                            total=total, 
+                                            completed=transferred,
+                                            eta=eta)
+
+                        # Update overall task
+                        for task in job_progress.tasks:
+                            if task.total is not None:
+                                overall_total = overall_total + task.total
+                                overall_progress.update(overall_task,
+                                                        total=overall_total)
+
+                    completed = sum(task.completed for task in job_progress.tasks)
+                    overall_progress.update(overall_task, completed=completed)
+            
+            
 
 # Main: run program
 if __name__ == "__main__":
