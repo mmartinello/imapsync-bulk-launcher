@@ -93,7 +93,7 @@ class ImapsyncStatus:
         log_file_path = re.search('.+.txt$', data, re.MULTILINE)
 
         return_data = {}
-        return_data['user'] = user.group()
+        return_data['user'] = user.group(1)
         return_data['pid'] = pid.group()
         return_data['log_file_path'] = log_file_path.group()
 
@@ -178,10 +178,7 @@ class ImapsyncStatus:
             job_title = "[green]{}".format(user)
 
             # Add a job progress for the current user
-            jobs[user] = job_progress.add_task(job_title,
-                                               start=False,
-                                               total=None,
-                                               eta="?")
+            jobs[user] = job_progress.add_task(job_title, total=None, eta="?")
 
         #total = sum(task.total for task in job_progress.tasks)
         overall_progress = Progress()
@@ -227,13 +224,14 @@ class ImapsyncStatus:
                                             completed=transferred,
                                             eta=eta)
 
-                        # Update overall task
+                        # Update the progress of the overall task
                         for task in job_progress.tasks:
                             if task.total is not None:
                                 overall_total = overall_total + task.total
                                 overall_progress.update(overall_task,
                                                         total=overall_total)
 
+                    # Update completed status of the overall task
                     completed = sum(task.completed for task in job_progress.tasks)
                     overall_progress.update(overall_task, completed=completed)
             
