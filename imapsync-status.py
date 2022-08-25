@@ -263,7 +263,7 @@ class ImapsyncStatus:
         if not self.no_clear_console:
             self.clear_console()
 
-        title = "Welcome to [dodger_blue1]Imapsync[/dodger_blue1] Status!"
+        title = "[b]Welcome to [dodger_blue1]Imapsync[/dodger_blue1] Status![/b]"
         print(Panel(title))
 
         job_progress = Progress(
@@ -279,6 +279,7 @@ class ImapsyncStatus:
         # Get running PID files to build current jobs progress
         jobs = {}
         users = self.parse_csv_file(self.user_file_path, self.skip_first_line)
+        users_count = len(users)
 
         for username, user in users.items():
             color = self.pick_random_color()
@@ -312,7 +313,14 @@ class ImapsyncStatus:
         )
         overall_task = overall_progress.add_task("All Jobs", total=None)
 
+        status_panel = Panel(
+            "",
+            title="[b]Overall Status",
+            border_style="blue"
+        )
+
         progress_table = Table.grid(expand=True)
+        progress_table.add_row(status_panel)
         progress_table.add_row(
             Panel(
                 job_progress,
@@ -352,13 +360,19 @@ class ImapsyncStatus:
                                             completed=transferred,
                                             eta=eta)
 
-                        # Update the progress of the overall task
-                        overall_total = 0
-                        for task in job_progress.tasks:
-                            if task.total is not None:
-                                overall_total = overall_total + task.total
+                    # Update the progress of the overall task
+                    overall_total = 0
+                    running_tasks = 0
+                    for task in job_progress.tasks:
+                        if task.total is not None:
+                            overall_total = overall_total + task.total
+                        if not task.finished:
+                            running_tasks += 1
 
-                        overall_progress.update(overall_task, total=overall_total)
+                    status_text = "Total users: {} | Running tasks: {}"
+                    status_text = status_text.format(users_count, running_tasks)
+
+                    overall_progress.update(overall_task, total=overall_total)
 
                     # Update completed status of the overall task
                     completed = sum(task.completed for task in job_progress.tasks)
