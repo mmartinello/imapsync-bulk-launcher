@@ -83,14 +83,22 @@ class ImapsyncStatus:
         parser.add_argument(
             '--skip-first-line',
             default=False,
+            dest='skip_first_line',
             action="store_true",
             help='Skip the first line of the CSV file.'
+        )
+        parser.add_argument(
+            '-r', '--show-running',
+            default=False,
+            dest='show_running',
+            action="store_true",
+            help='Show only running users.'
         )
 
     # Manage arguments: do things based on configured command arguments
     def manage_arguments(self, args):        
         # Check if user file exists
-        self.user_file_path = getattr(args, 'user_file_path', None)
+        self.user_file_path = getattr(args, 'user_file_path')
         if not os.path.exists(self.user_file_path):
                 msg = "User file '{}' does not exists!"
                 msg = msg.format(self.user_file_path)
@@ -98,6 +106,9 @@ class ImapsyncStatus:
                 sys.exit(1)
         else:
             self.parse_csv_file(self.user_file_path)
+
+        self.skip_first_line = getattr(args, 'skip_first_line')
+        self.show_running = getattr(args, 'show_running')
 
     # Parse the user CSV file
     def parse_csv_file(self, csv_file_path, skip_first_line=False):
@@ -121,17 +132,9 @@ class ImapsyncStatus:
                     users[source_user] = user
                 line_count += 1
 
+            # Sort users by username and return
+            users = dict(sorted(users.items()))
             return users
-
-    # Return the list of users from a user CSV file
-    def get_user_list(self, csv_file_path):
-        users = self.parse_csv_file(csv_file_path)
-
-        user_list = []
-        for user in users:
-            user_list.append(user['source_user'])
-
-        return user_list
 
     # Read a PID file
     def parse_pid_file(self, file_path):
@@ -156,9 +159,18 @@ class ImapsyncStatus:
 
     # Get the PID file for a given user
     def get_user_pid_file(self, username, dir_path='.'):
-        pid_file_name = "{}.pid".format(username)
+        pid_file_name = "imapsync-{}.pid".format(username)
         pid_file_path = os.path.join(dir_path, pid_file_name)
         return pid_file_path
+
+    # Check if PID file for a given user exists or not
+    def user_pid_file_exists(self, username, dir_path='.'):
+        pid_file_path = self.get_user_pid_file(username, dir_path)
+
+        if os.path.exists(pid_file_path):
+            return True
+        else:
+            return False
 
     # Get last line of a given file
     # FIXME: this works only on Linux! Needs to be adapted to be portable!
@@ -232,17 +244,30 @@ class ImapsyncStatus:
 
         # Get running PID files to build current jobs progress
         jobs = {}
-
-        users = self.parse_csv_file(self.user_file_path)
+        users = self.parse_csv_file(self.user_file_path, self.skip_first_line)
 
         for username, user in users.items():
             color = self.pick_random_color()
             job_title = "[color({})]{}".format(color, username)
 
+            # Check if a progress bar needs to be added for the current user:
+            # if --show-running is enabled the user is added only if it has
+            # a PID file running
+            add_user = False
+            pid_file_exists = self.user_pid_file_exists(username)
+
+            if not self.show_running or (
+                self.show_running and pid_file_exists
+                ):
+                add_user = True
+            else:
+                add_user = False
+
             # Add a job progress for the current user
-            jobs[username] = job_progress.add_task(job_title,
-                                                   total=None,
-                                                   eta="?")
+            if add_user:
+                jobs[username] = job_progress.add_task(job_title,
+                                                       total=None,
+                                                       eta="?")
 
         overall_progress = Progress()
         overall_task = overall_progress.add_task("All Jobs", total=0)
