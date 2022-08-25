@@ -303,8 +303,14 @@ class ImapsyncStatus:
                                                        total=None,
                                                        eta="?")
 
-        overall_progress = Progress()
-        overall_task = overall_progress.add_task("All Jobs", total=0)
+        overall_progress = Progress(
+            "{task.description}",
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeRemainingColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.2f}%"),
+        )
+        overall_task = overall_progress.add_task("All Jobs", total=None)
 
         progress_table = Table.grid(expand=True)
         progress_table.add_row(
@@ -324,7 +330,6 @@ class ImapsyncStatus:
             )
         )
 
-        overall_total = 0
         with Live(progress_table, refresh_per_second=10):
             while True:
                 sleep(1)
@@ -334,7 +339,7 @@ class ImapsyncStatus:
                     log_file_path = log_data['log_file_path']
                     user = log_data['user']
                     last_line = self.get_last_line(log_file_path)
-                    
+
                     sync_status = self.get_sync_status(last_line)
                     if sync_status == "syncing":
                         sync_progress = self.get_sync_progress(last_line)
@@ -348,11 +353,12 @@ class ImapsyncStatus:
                                             eta=eta)
 
                         # Update the progress of the overall task
+                        overall_total = 0
                         for task in job_progress.tasks:
                             if task.total is not None:
                                 overall_total = overall_total + task.total
-                                overall_progress.update(overall_task,
-                                                        total=overall_total)
+
+                        overall_progress.update(overall_task, total=overall_total)
 
                     # Update completed status of the overall task
                     completed = sum(task.completed for task in job_progress.tasks)
