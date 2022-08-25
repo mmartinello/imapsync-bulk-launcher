@@ -15,6 +15,7 @@ _LOG_FILE_PATH = "imapsync-status.log"
 
 import argparse
 import colorlog
+import csv
 import glob
 import logging
 import logging.handlers
@@ -22,6 +23,7 @@ import os
 import re
 import random
 import subprocess
+import sys
 
 from rich import print
 from rich.live import Live
@@ -59,12 +61,6 @@ class ImapsyncStatus:
 
         self.logger.setLevel(level)
 
-    # Enable debug log
-    def enable_debug(self):
-        self.logger.info("Enabling debug log ...")
-        self.logger.setLevel(colorlog.colorlog.logging.DEBUG)
-        self.logger.debug("Debug log enabled")
-
     # Add and instance command arguments
     def add_arguments(self, parser):
         parser.add_argument(
@@ -77,12 +73,65 @@ class ImapsyncStatus:
             action="store_true",
             help='Print debugging info to console.'
         )
+        parser.add_argument(
+            '-u', '--user-file',
+            type=str,
+            default='users.csv',
+            dest='user_file_path',
+            help='The path of the CSV file containing the list of users'
+        )
+        parser.add_argument(
+            '--skip-first-line',
+            default=False,
+            action="store_true",
+            help='Skip the first line of the CSV file.'
+        )
 
     # Manage arguments: do things based on configured command arguments
-    def manage_arguments(self, args):
-        # Enable debug
-        if getattr(args, "debug", False):
-            self.enable_debug()
+    def manage_arguments(self, args):        
+        # Check if user file exists
+        self.user_file_path = getattr(args, 'user_file_path', None)
+        if not os.path.exists(self.user_file_path):
+                msg = "User file '{}' does not exists!"
+                msg = msg.format(self.user_file_path)
+                self.logger.error(msg)
+                sys.exit(1)
+        else:
+            self.parse_csv_file(self.user_file_path)
+
+    # Parse the user CSV file
+    def parse_csv_file(self, csv_file_path, skip_first_line=False):
+        with open(csv_file_path) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=';')
+            line_count = 1
+
+            users = {}
+            for row in csv_reader:
+                if skip_first_line and line_count == 1:
+                    continue
+                else:
+                    source_user = row[0]
+                    dest_user = row[1]
+                    
+                    user = {
+                        'source_user': source_user,
+                        'dest_user': dest_user
+                    }
+
+                    users[source_user] = user
+                line_count += 1
+
+            return users
+
+    # Return the list of users from a user CSV file
+    def get_user_list(self, csv_file_path):
+        users = self.parse_csv_file(csv_file_path)
+
+        user_list = []
+        for user in users:
+            user_list.append(user['source_user'])
+
+        return user_list
 
     # Read a PID file
     def parse_pid_file(self, file_path):
@@ -105,7 +154,14 @@ class ImapsyncStatus:
         files = glob.glob(path)
         return files
 
+    # Get the PID file for a given user
+    def get_user_pid_file(self, username, dir_path='.'):
+        pid_file_name = "{}.pid".format(username)
+        pid_file_path = os.path.join(dir_path, pid_file_name)
+        return pid_file_path
+
     # Get last line of a given file
+    # FIXME: this works only on Linux! Needs to be adapted to be portable!
     def get_last_line(self, file_path):
         last_line = subprocess.check_output(['tail', '-1', file_path])
         last_line = last_line.decode()
@@ -174,20 +230,20 @@ class ImapsyncStatus:
             TextColumn("[progress.percentage]{task.percentage:>3.2f}%"),
         )
 
-        # Get PID files to build current jobs progress
+        # Get running PID files to build current jobs progress
         jobs = {}
-        for pid_file in pid_files:
-            log_data = self.parse_pid_file(pid_file)
-            user = log_data['user']
-            color = self.pick_random_color()
-            job_title = "[color({})]{}".format(color, user)
 
-            
+        users = self.parse_csv_file(self.user_file_path)
+
+        for username, user in users.items():
+            color = self.pick_random_color()
+            job_title = "[color({})]{}".format(color, username)
 
             # Add a job progress for the current user
-            jobs[user] = job_progress.add_task(job_title, total=None, eta="?")
+            jobs[username] = job_progress.add_task(job_title,
+                                                   total=None,
+                                                   eta="?")
 
-        #total = sum(task.total for task in job_progress.tasks)
         overall_progress = Progress()
         overall_task = overall_progress.add_task("All Jobs", total=0)
 
@@ -197,7 +253,8 @@ class ImapsyncStatus:
                 job_progress,
                 title="[b]Jobs",
                 border_style="red",
-                padding=(1, 2)),
+                padding=(1, 2)
+            )
         )
         progress_table.add_row(
             Panel(
@@ -205,8 +262,8 @@ class ImapsyncStatus:
                 title="Overall Progress",
                 border_style="green", 
                 padding=(1, 2)
+            )
         )
-)
 
         overall_total = 0
         with Live(progress_table, refresh_per_second=10):
