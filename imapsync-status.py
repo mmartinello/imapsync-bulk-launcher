@@ -20,7 +20,7 @@ import logging
 import logging.handlers
 import os
 import re
-import rich
+import random
 import subprocess
 
 from rich import print
@@ -138,6 +138,10 @@ class ImapsyncStatus:
         else:
             return None
 
+    # Pick a random color
+    def pick_random_color(self):
+        color = random.randrange(0, 255)
+        return color
 
     # Handle & exec function called from main
     def handle(self):
@@ -175,7 +179,10 @@ class ImapsyncStatus:
         for pid_file in pid_files:
             log_data = self.parse_pid_file(pid_file)
             user = log_data['user']
-            job_title = "[green]{}".format(user)
+            color = self.pick_random_color()
+            job_title = "[color({})]{}".format(color, user)
+
+            
 
             # Add a job progress for the current user
             jobs[user] = job_progress.add_task(job_title, total=None, eta="?")
