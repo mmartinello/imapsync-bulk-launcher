@@ -22,6 +22,7 @@ import logging.handlers
 import os
 import re
 import random
+import shutil
 import subprocess
 import sys
 
@@ -94,6 +95,13 @@ class ImapsyncStatus:
             action="store_true",
             help='Show only running users.'
         )
+        parser.add_argument(
+            '-n', '--no-clear-console',
+            default=False,
+            dest='no_clear_console',
+            action="store_true",
+            help='Avoid to clear the console at program start.'
+        )
 
     # Manage arguments: do things based on configured command arguments
     def manage_arguments(self, args):        
@@ -109,6 +117,7 @@ class ImapsyncStatus:
 
         self.skip_first_line = getattr(args, 'skip_first_line')
         self.show_running = getattr(args, 'show_running')
+        self.no_clear_console = getattr(args, 'no_clear_console')
 
     # Parse the user CSV file
     def parse_csv_file(self, csv_file_path, skip_first_line=False):
@@ -210,9 +219,30 @@ class ImapsyncStatus:
     def pick_random_color(self):
         color = random.randrange(0, 255)
         return color
+    
+    # Clear the console
+    def clear_console(self):
+        commands = ['clear', 'cls']
+        for command in commands:
+            if self.command_exists(command):
+                os.system(command)
+                return True
+
+        return False
+
+    # Check if command exists
+    def command_exists(self, cmd):
+            """
+            Check if command exists
+            """
+            if shutil.which(cmd):
+                return True
+            else:
+                return False
+
 
     # Handle & exec function called from main
-    def handle(self):
+    def handle(self): 
         # Command line parser
         parser = argparse.ArgumentParser(
             description="Imapsync Status: imapsync-status.py"
@@ -228,6 +258,10 @@ class ImapsyncStatus:
         # Get PID files
         pid_files = self.get_pid_files()
         imapsync_count = len(pid_files)
+
+        # Clear the console
+        if not self.no_clear_console:
+            self.clear_console()
 
         title = "Welcome to [dodger_blue1]Imapsync[/dodger_blue1] Status!"
         print(Panel(title))
