@@ -28,7 +28,6 @@ import subprocess
 import sys
 
 from rich import print
-from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCompleteColumn, TimeRemainingColumn
