@@ -5,7 +5,7 @@ Imapsync Status
 Display the status of current Imapsync processes
 
 authors:
-    Mattia Martinello - mattia.martinello@infojuice.eu
+    Mattia Martinello - mattia@mattiamartinello.com
 """
 
 # Built in constants
