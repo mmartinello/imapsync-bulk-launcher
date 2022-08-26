@@ -16,6 +16,7 @@ _LOG_FILE_PATH = "imapsync-status.log"
 import argparse
 import colorlog
 import csv
+import datetime
 import glob
 import logging
 import logging.handlers
@@ -199,13 +200,17 @@ class ImapsyncStatus:
 
     # Get sync progress from a given log file line
     def get_sync_progress(self, line):
-        match = re.search('ETA: (.+) \+.+\s+([0-9]+)\/([0-9]+) msgs left$', line)
+        match = re.search('ETA: .+ ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).+ ([0-9]+)\/([0-9]+) msgs left$', line)
         if match:
-            eta = match.group(1)
+            # Get messages transfer information
             left_messages = int(match.group(2))
             total_messages = int(match.group(3))
             transferred_messages = total_messages - left_messages
             current_percentage = transferred_messages / total_messages * 100
+
+            # Get ETA
+            eta = match.group(1)
+            eta = datetime.datetime.strptime(eta, '%Y-%m-%d %H:%M:%S')
 
             return_data = {}
             return_data['eta'] = eta
@@ -369,6 +374,9 @@ class ImapsyncStatus:
             while True:
                 sleep(1)
 
+                max_eta = None
+                max_eta_timestamp = None
+                max_eta_string = '?'
                 for pid_file in pid_files:
                     log_data = self.parse_pid_file(pid_file)
                     log_file_path = log_data['log_file_path']
@@ -378,16 +386,24 @@ class ImapsyncStatus:
                     sync_status = self.get_sync_status(last_line)
                     if sync_status == "syncing":
                         job_progress.start_task(jobs[user])
-                        
+
                         sync_progress = self.get_sync_progress(last_line)
-                        eta = sync_progress['eta']
                         transferred = sync_progress['transferred_messages']
                         total = sync_progress['total_messages']
+
+                        eta = sync_progress['eta']
+                        eta_string = eta.strftime('%A %Y-%m-%d %H:%M:%S')
                         
                         job_progress.update(jobs[user],
                                             total=total, 
                                             completed=transferred,
-                                            eta=eta)
+                                            eta=eta_string)
+
+                        # Calculate maximum ETA
+                        eta_timestamp = eta.timestamp()
+                        if max_eta is None or max_eta_timestamp is None or eta_timestamp > max_eta_timestamp:
+                            max_eta_timestamp = eta_timestamp
+                            max_eta = datetime.datetime.fromtimestamp(max_eta_timestamp)
 
                     # Update the progress of the overall task
                     overall_total = 0
@@ -403,11 +419,14 @@ class ImapsyncStatus:
                     idle_users = users_count - running_tasks
 
                     # Update the overall status task
+                    if type(max_eta) == datetime.datetime:
+                        max_eta_string = max_eta.strftime('%A %Y-%m-%d %H:%M:%S')
+
                     status_progress.update(
                         status_task,
                         running_jobs=running_tasks,
                         idle_users=idle_users,
-                        max_eta='TO BE CALCULATED'
+                        max_eta=max_eta_string
                     )
 
                     # Update the overall progress task
