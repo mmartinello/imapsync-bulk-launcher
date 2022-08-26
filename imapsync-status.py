@@ -27,10 +27,12 @@ import subprocess
 import sys
 
 from rich import print
+from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCompleteColumn, TimeRemainingColumn
 from rich.table import Table
+from rich.text import Text
 
 from time import sleep
 
@@ -242,7 +244,7 @@ class ImapsyncStatus:
 
 
     # Handle & exec function called from main
-    def handle(self): 
+    def handle(self):
         # Command line parser
         parser = argparse.ArgumentParser(
             description="Imapsync Status: imapsync-status.py"
@@ -263,9 +265,43 @@ class ImapsyncStatus:
         if not self.no_clear_console:
             self.clear_console()
 
+        # Print the title panel
         title = "[b]Welcome to [dodger_blue1]Imapsync[/dodger_blue1] Status![/b]"
         print(Panel(title))
 
+        # Get running PID files to build current jobs progress
+        jobs = {}
+        users = self.parse_csv_file(self.user_file_path, self.skip_first_line)
+        users_count = len(users)
+
+        # Create the main table
+        progress_table = Table.grid(expand=True)
+
+        # Overall status: create the progress and add it as a new row
+        status_progress = Progress(
+            TextColumn("Total users: [b bright_cyan]{task.fields[total_users]}"),
+            TextColumn("Running jobs: [b bright_cyan]{task.fields[running_jobs]}"),
+            TextColumn("Idle users: [b bright_cyan]{task.fields[idle_users]}"),
+            TextColumn("Maximum ETA: [b]{task.fields[max_eta]}"),
+            expand=True,
+        )
+        status_task = status_progress.add_task(
+            "Overall Status:",
+            total=None,
+            total_users=users_count,
+            running_jobs='?',
+            idle_users='?',
+            max_eta='?',
+        )
+        progress_table.add_row(
+            Panel(
+                status_progress,
+                title="[b]Overall Status",
+                border_style="blue"
+            )
+        )
+
+        # Main job progress: contains all sync progress jobs
         job_progress = Progress(
             "{task.description}",
             SpinnerColumn(),
@@ -274,13 +310,10 @@ class ImapsyncStatus:
             TimeRemainingColumn(),
             TextColumn("ETA: {task.fields[eta]}"),
             TextColumn("[progress.percentage]{task.percentage:>3.2f}%"),
+            expand=True,
         )
 
-        # Get running PID files to build current jobs progress
-        jobs = {}
-        users = self.parse_csv_file(self.user_file_path, self.skip_first_line)
-        users_count = len(users)
-
+        # Create a job for each user taken from the CSV file
         for username, user in users.items():
             color = self.pick_random_color()
             job_title = "[color({})]{}".format(color, username)
@@ -288,46 +321,39 @@ class ImapsyncStatus:
             # Check if a progress bar needs to be added for the current user:
             # if --show-running is enabled the user is added only if it has
             # a PID file running
-            add_user = False
             pid_file_exists = self.user_pid_file_exists(username)
 
             if not self.show_running or (
                 self.show_running and pid_file_exists
                 ):
-                add_user = True
-            else:
-                add_user = False
-
-            # Add a job progress for the current user
-            if add_user:
                 jobs[username] = job_progress.add_task(job_title,
+                                                       start=False,
                                                        total=None,
                                                        eta="?")
 
-        overall_progress = Progress(
-            "{task.description}",
-            BarColumn(),
-            MofNCompleteColumn(),
-            TimeRemainingColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.2f}%"),
-        )
-        overall_task = overall_progress.add_task("All Jobs", total=None)
-
-        status_panel = Panel(
-            "",
-            title="[b]Overall Status",
-            border_style="blue"
-        )
-
-        progress_table = Table.grid(expand=True)
-        progress_table.add_row(status_panel)
+        # Add the main job progress row
         progress_table.add_row(
             Panel(
                 job_progress,
                 title="[b]Jobs",
                 border_style="red",
-                padding=(1, 2)
+                padding=(1, 2),
             )
+        )
+
+        # Overall progress: create the progress and add it as a new row
+        overall_progress = Progress(
+            TextColumn("{task.fields[running_jobs]} Running Jobs"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeRemainingColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.2f}%"),
+            expand=True,
+        )
+        overall_task = overall_progress.add_task(
+            "Overall Progress",
+            total=None,
+            running_jobs='?'
         )
         progress_table.add_row(
             Panel(
@@ -338,6 +364,7 @@ class ImapsyncStatus:
             )
         )
 
+        # Update the progress using Live()
         with Live(progress_table, refresh_per_second=10):
             while True:
                 sleep(1)
@@ -350,11 +377,13 @@ class ImapsyncStatus:
 
                     sync_status = self.get_sync_status(last_line)
                     if sync_status == "syncing":
+                        job_progress.start_task(jobs[user])
+                        
                         sync_progress = self.get_sync_progress(last_line)
                         eta = sync_progress['eta']
                         transferred = sync_progress['transferred_messages']
                         total = sync_progress['total_messages']
-
+                        
                         job_progress.update(jobs[user],
                                             total=total, 
                                             completed=transferred,
@@ -362,24 +391,34 @@ class ImapsyncStatus:
 
                     # Update the progress of the overall task
                     overall_total = 0
-                    running_tasks = 0
+                    overall_completed = 0
+                    running_tasks = 0                    
                     for task in job_progress.tasks:
                         if task.total is not None:
                             overall_total = overall_total + task.total
-                        if not task.finished:
+                            overall_completed = overall_completed + task.completed
+                        if task.started:
                             running_tasks += 1
 
-                    status_text = "Total users: {} | Running tasks: {}"
-                    status_text = status_text.format(users_count, running_tasks)
+                    idle_users = users_count - running_tasks
 
-                    overall_progress.update(overall_task, total=overall_total)
+                    # Update the overall status task
+                    status_progress.update(
+                        status_task,
+                        running_jobs=running_tasks,
+                        idle_users=idle_users,
+                        max_eta='TO BE CALCULATED'
+                    )
 
-                    # Update completed status of the overall task
-                    completed = sum(task.completed for task in job_progress.tasks)
-                    overall_progress.update(overall_task, completed=completed)
+                    # Update the overall progress task
+                    overall_progress.update(
+                        overall_task,
+                        total=overall_total,
+                        completed=overall_completed,
+                        running_jobs=running_tasks
+                    )
             
             
-
 # Main: run program
 if __name__ == "__main__":
     main = ImapsyncStatus()
