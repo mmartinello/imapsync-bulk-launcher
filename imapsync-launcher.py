@@ -216,7 +216,10 @@ class ImapsyncLauncher:
         # Build the Imapsync arguments from the args dictionary
         imapsync_args = []
         for name, value in args.items():
-            arg_value = "{} {}".format(name, value)
+            if value == "":
+                arg_value = "{}".format(name)
+            else:
+                arg_value = "{} {}".format(name, value)
             imapsync_args.append(arg_value)
 
         # Build the final Imapsync command
