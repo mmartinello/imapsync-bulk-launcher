@@ -15,7 +15,6 @@ _LOG_FILE_PATH = "imapsync-launcher.log"
 _IMAPSYNC_BIN_PATH = "imapsync"
 
 import argparse
-from unittest import skip
 import colorlog
 import csv
 import logging
@@ -93,6 +92,13 @@ class ImapsyncLauncher:
             dest='concurrency',
             help='The maximum number of concurrent jobs to execute (default: the number of CPU cores).'
         )
+        parser.add_argument(
+            'users_limit',
+            metavar='USER',
+            type=str,
+            nargs='*',
+            help='Filter a user from the CSV file.'
+        )
 
     # Manage arguments: do things based on configured command arguments
     def manage_arguments(self, args):        
@@ -106,6 +112,7 @@ class ImapsyncLauncher:
 
         self.skip_first_line = getattr(args, 'skip_first_line')
         self.imapsync_path = getattr(args, 'imapsync_path', 'imapsync')
+        self.users_limit = getattr(args, 'users_limit')
 
     # Parse the user CSV file
     def parse_csv_file(self, csv_file_path, skip_first_line=False):
@@ -236,6 +243,14 @@ class ImapsyncLauncher:
 
         # Get list of users from the CSV file
         users = self.parse_csv_file(self.user_file_path, self.skip_first_line)
+
+        # Filter user from CSV file if user filter is enabled
+        if self.users_limit:
+            for key, value in list(users.items()):
+                if key not in self.users_limit:
+                    del users[key]
+
+        # Count users
         users_count = len(users)
 
         # Prompt the number of processes to start and exit if not confirmed
