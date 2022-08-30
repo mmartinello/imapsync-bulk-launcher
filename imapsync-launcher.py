@@ -12,8 +12,10 @@ authors:
 _VERSION = "1.0"
 _VERSION_DESCR = "Imapsync Launcher"
 _LOG_FILE_PATH = "imapsync-launcher.log"
+_IMAPSYNC_BIN_PATH = "imapsync"
 
 import argparse
+from unittest import skip
 import colorlog
 import csv
 import logging
@@ -73,16 +75,16 @@ class ImapsyncLauncher:
             help='The path of the CSV file containing the list of users (default: users.csv)'
         )
         parser.add_argument(
-            '--skip-first-line',
+            '-s', '--skip-first-line',
             default=False,
             dest='skip_first_line',
             action="store_true",
             help='Skip the first line of the CSV file (default: False).'
         )
         parser.add_argument(
-            '-i', '--imapsync-command',
+            '-i', '--imapsync-path',
             default='imapsync',
-            dest='imapsync_command',
+            dest='imapsync_path',
             help='The path of the imapsync command (default: imapsync).'
         )
         parser.add_argument(
@@ -101,31 +103,32 @@ class ImapsyncLauncher:
                 msg = msg.format(self.user_file_path)
                 self.logger.error(msg)
                 sys.exit(1)
-        else:
-            self.parse_csv_file(self.user_file_path)
 
         self.skip_first_line = getattr(args, 'skip_first_line')
+        self.imapsync_path = getattr(args, 'imapsync_path', 'imapsync')
 
     # Parse the user CSV file
     def parse_csv_file(self, csv_file_path, skip_first_line=False):
         with open(csv_file_path) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=';')
-            line_count = 1
+            current_line_n = 0
 
             users = {}
             for row in csv_reader:
-                if skip_first_line and line_count == 1:
+                current_line_n += 1
+
+                if skip_first_line and current_line_n == 1:
                     continue
                 else:
                     source_user = row[0]
                     source_host = row[1]
                     source_port = row[2]
-                    source_ssl = row[3]
+                    source_ssl = self.value2bool(row[3])
                     source_password = row[4]
                     dest_user = row[5]
                     dest_host = row[6]
                     dest_port = row[7]
-                    dest_ssl = row[8]
+                    dest_ssl = self.value2bool(row[8])
                     dest_password = row[9]
                     extra_params = row[10]
                     
@@ -143,13 +146,31 @@ class ImapsyncLauncher:
                         'extra_params': extra_params
                     }
 
+                    # Add the user to the to users dictionary
                     users[source_user] = user
-                    
-                line_count += 1
 
             # Sort users by username and return
             users = dict(sorted(users.items()))
+
             return users
+
+    # Return boolean representation of a given CSV value
+    def value2bool(self, value):
+        true_values = [True, 1, 'yes', 'on', '1', 'true', 'True']
+        false_values = [False, 0, 'no', 'off', '0', 'false', 'False']
+
+        # If the value is a string, transform to lowercase
+        if type(value) == str:
+            value = value.lower()
+
+        # Check if value is in true or false values, else raise Exception
+        if value in true_values:
+            return True
+        elif value in false_values:
+            return False
+        else:
+            msg = "Unknown value given: {}".format(value)
+            raise Exception(msg)
 
     # Check if command exists
     def command_exists(self, cmd):
@@ -160,6 +181,43 @@ class ImapsyncLauncher:
                 return True
             else:
                 return False
+
+    # Build Imapsync command
+    def build_imapsync_cmd(
+            self, source_user, source_password, dest_user, dest_host,
+            dest_password, imapsync_cmd_path='imapsync',
+            source_host='127.0.0.1', source_port=993, source_ssl=True,
+            dest_port=993, dest_ssl=True, extra_params=''):
+        
+        # Build arguments dictionary
+        args = {}
+        args['--host1'] = source_host
+        args['--port1'] = source_port
+        args['--password1'] = source_password
+        args['--host2'] = dest_host
+        args['--port2'] = dest_port
+        args['--password2'] = dest_password
+        args['--user1'] = source_user
+        args['--user2'] = dest_user
+        
+        # SSL arguments
+        if source_ssl:
+            args['--ssl1'] = ""
+        if dest_ssl:
+            args['--ssl2'] = ""
+
+        # Build the Imapsync arguments from the args dictionary
+        imapsync_args = []
+        for name, value in args.items():
+            arg_value = "{} {}".format(name, value)
+            imapsync_args.append(arg_value)
+
+        # Build the final Imapsync command
+        imapsync_args_string = " ".join(imapsync_args)
+        imapsync_command = "{} {} {}".format(imapsync_cmd_path,
+                                             imapsync_args_string,
+                                             extra_params)
+        return imapsync_command
 
 
     # Handle & exec function called from main
@@ -186,8 +244,26 @@ class ImapsyncLauncher:
         if not Confirm.ask(msg):
             print("OK! :waving_hand:")
 
-
+        # Loop users
+        for username, user in users.items():
+            imapsync_command = self.build_imapsync_cmd(
+                source_user=user['source_user'],
+                source_password=user['source_password'],
+                dest_user=user['dest_user'],
+                dest_host=user['dest_host'],
+                dest_password=user['dest_password'],
+                imapsync_cmd_path=self.imapsync_path,
+                source_host=user['source_host'],
+                source_port=user['source_port'],
+                source_ssl=user['source_ssl'],
+                dest_port=user['dest_port'],
+                dest_ssl=user['dest_ssl'],
+                extra_params=user['extra_params']
+            )
             
+            msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}".format(username, imapsync_command)
+            print(msg)
+
             
 # Main: run program
 if __name__ == "__main__":
