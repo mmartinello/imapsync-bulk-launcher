@@ -257,7 +257,8 @@ class ImapsyncLauncher:
         msg = "I am going to spawn {} Imapsync processes. Continue?"
         msg = msg.format(users_count)
         if not Confirm.ask(msg):
-            print("OK! :waving_hand:")
+            print("OK, bye! :waving_hand:")
+            exit(1)
 
         # Loop users
         for username, user in users.items():
