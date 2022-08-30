@@ -114,8 +114,6 @@ class ImapsyncStatus:
                 msg = msg.format(self.user_file_path)
                 self.logger.error(msg)
                 sys.exit(1)
-        else:
-            self.parse_csv_file(self.user_file_path)
 
         self.skip_first_line = getattr(args, 'skip_first_line')
         self.show_running = getattr(args, 'show_running')
@@ -125,27 +123,66 @@ class ImapsyncStatus:
     def parse_csv_file(self, csv_file_path, skip_first_line=False):
         with open(csv_file_path) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=';')
-            line_count = 1
+            current_line_n = 0
 
             users = {}
             for row in csv_reader:
-                if skip_first_line and line_count == 1:
+                current_line_n += 1
+
+                if skip_first_line and current_line_n == 1:
                     continue
                 else:
                     source_user = row[0]
-                    dest_user = row[1]
+                    source_host = row[1]
+                    source_port = row[2]
+                    source_ssl = self.value2bool(row[3])
+                    source_password = row[4]
+                    dest_user = row[5]
+                    dest_host = row[6]
+                    dest_port = row[7]
+                    dest_ssl = self.value2bool(row[8])
+                    dest_password = row[9]
+                    extra_params = row[10]
                     
                     user = {
                         'source_user': source_user,
-                        'dest_user': dest_user
+                        'source_host': source_host,
+                        'source_port': source_port,
+                        'source_ssl': source_ssl,
+                        'source_password': source_password,
+                        'dest_user': dest_user,
+                        'dest_host': dest_host,
+                        'dest_port': dest_port,
+                        'dest_ssl': dest_ssl,
+                        'dest_password': dest_password,
+                        'extra_params': extra_params
                     }
 
+                    # Add the user to the to users dictionary
                     users[source_user] = user
-                line_count += 1
 
             # Sort users by username and return
             users = dict(sorted(users.items()))
+
             return users
+
+    # Return boolean representation of a given CSV value
+    def value2bool(self, value):
+        true_values = [True, 1, 'yes', 'on', '1', 'true', 'True']
+        false_values = [False, 0, 'no', 'off', '0', 'false', 'False']
+
+        # If the value is a string, transform to lowercase
+        if type(value) == str:
+            value = value.lower()
+
+        # Check if value is in true or false values, else raise Exception
+        if value in true_values:
+            return True
+        elif value in false_values:
+            return False
+        else:
+            msg = "Unknown value given: {}".format(value)
+            raise Exception(msg)
 
     # Read a PID file
     def parse_pid_file(self, file_path):
