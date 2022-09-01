@@ -22,6 +22,7 @@ import logging.handlers
 import os
 import shutil
 import sys
+import subprocess
 
 from rich import print
 from rich.prompt import Confirm
@@ -194,7 +195,8 @@ class ImapsyncLauncher:
             self, source_user, source_password, dest_user, dest_host,
             dest_password, imapsync_cmd_path='imapsync',
             source_host='127.0.0.1', source_port=993, source_ssl=True,
-            dest_port=993, dest_ssl=True, extra_params=''):
+            dest_port=993, dest_ssl=True, extra_params='',
+            return_type='string'):
         
         # Build arguments dictionary
         args = {}
@@ -227,8 +229,21 @@ class ImapsyncLauncher:
         imapsync_command = "{} {} {}".format(imapsync_cmd_path,
                                              imapsync_args_string,
                                              extra_params)
-        return imapsync_command
 
+        # If return type is string return the full command string, if args
+        # return the command arguments splitted as array
+        if return_type == "string":
+            return imapsync_command
+        elif return_type == "args":
+            return imapsync_command.split(' ')
+        else:
+            msg = "Unsupported return type requested: {}".format(return_type)
+            raise Exception(msg)
+
+    # Execute a new process and return a subprocess.Popen object
+    def subprocess_exec(self, args, **kwargs):
+        process = subprocess.Popen(args, **kwargs)
+        return process
 
     # Handle & exec function called from main
     def handle(self):
@@ -257,7 +272,7 @@ class ImapsyncLauncher:
         users_count = len(users)
 
         # Prompt the number of processes to start and exit if not confirmed
-        msg = "I am going to spawn {} Imapsync processes. Continue?"
+        msg = "I am going to spawn [bold bright_cyan]{}[/bold bright_cyan] Imapsync processes. Continue?"
         msg = msg.format(users_count)
         if not Confirm.ask(msg):
             print("OK, bye! :waving_hand:")
@@ -265,7 +280,7 @@ class ImapsyncLauncher:
 
         # Loop users
         for username, user in users.items():
-            imapsync_command = self.build_imapsync_cmd(
+            imapsync_command_args = self.build_imapsync_cmd(
                 source_user=user['source_user'],
                 source_password=user['source_password'],
                 dest_user=user['dest_user'],
@@ -277,12 +292,20 @@ class ImapsyncLauncher:
                 source_ssl=user['source_ssl'],
                 dest_port=user['dest_port'],
                 dest_ssl=user['dest_ssl'],
-                extra_params=user['extra_params']
+                extra_params=user['extra_params'],
+                return_type='args'
             )
             
-            msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}".format(username, imapsync_command)
+            msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}"
+            msg = msg.format(username, imapsync_command_args)
             print(msg)
 
+            # Executing a new imapsync process
+            process = self.subprocess_exec(imapsync_command_args)
+            
+            pid = process.pid
+            msg = "New process executed with PID {}".format(pid)
+            print(msg)
             
 # Main: run program
 if __name__ == "__main__":
