@@ -12,7 +12,6 @@ authors:
 _VERSION = "1.0"
 _VERSION_DESCR = "Imapsync Launcher"
 _LOG_FILE_PATH = "imapsync-launcher.log"
-_IMAPSYNC_BIN_PATH = "imapsync"
 
 import argparse
 import colorlog
@@ -65,6 +64,7 @@ class ImapsyncLauncher:
         parser.add_argument(
             '-v', '--debug',
             action="store_true",
+            default=False,
             help='Print debugging info to console.'
         )
         parser.add_argument(
@@ -114,6 +114,7 @@ class ImapsyncLauncher:
         self.skip_first_line = getattr(args, 'skip_first_line')
         self.imapsync_path = getattr(args, 'imapsync_path', 'imapsync')
         self.users_limit = getattr(args, 'users_limit')
+        self.debug = getattr(args, 'debug', False)
 
     # Parse the user CSV file
     def parse_csv_file(self, csv_file_path, skip_first_line=False):
@@ -295,16 +296,18 @@ class ImapsyncLauncher:
                 extra_params=user['extra_params'],
                 return_type='args'
             )
-            
-            msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}"
-            msg = msg.format(username, imapsync_command_args)
-            print(msg)
+
+            if self.debug:            
+                msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}"
+                msg = msg.format(username, imapsync_command_args)
+                print(msg)
 
             # Executing a new imapsync process
             process = self.subprocess_exec(imapsync_command_args)
             
             pid = process.pid
-            msg = "New process executed with PID {}".format(pid)
+            msg = "New process for user [b]{}[/b] executed with PID {}"
+            msg = msg.format(username, pid)
             print(msg)
             
 # Main: run program
