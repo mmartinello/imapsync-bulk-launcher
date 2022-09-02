@@ -300,7 +300,6 @@ class ImapsyncStatus:
 
         # Get PID files
         pid_files = self.get_pid_files()
-        imapsync_count = len(pid_files)
 
         # Clear the console
         if not self.no_clear_console:
@@ -413,6 +412,9 @@ class ImapsyncStatus:
                 max_eta = None
                 max_eta_timestamp = None
                 max_eta_string = '?'
+
+                # Get PID files
+                pid_files = self.get_pid_files()
                 for pid_file in pid_files:
                     log_data = self.parse_pid_file(pid_file)
                     log_file_path = log_data['log_file_path']
