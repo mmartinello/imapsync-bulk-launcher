@@ -88,12 +88,6 @@ class ImapsyncLauncher:
             help='The path of the imapsync command (default: imapsync).'
         )
         parser.add_argument(
-            '-c', '--concurrency',
-            default=None,
-            dest='concurrency',
-            help='The maximum number of concurrent jobs to execute (default: the number of CPU cores).'
-        )
-        parser.add_argument(
             '-e', '--extra',
             default=None,
             dest='imapsync_extra',
