@@ -420,29 +420,29 @@ class ImapsyncStatus:
                     log_file_path = log_data['log_file_path']
                     user = log_data['user']
                     last_line = self.get_last_line(log_file_path)
-
                     sync_status = self.get_sync_status(last_line)
-                    if sync_status == "syncing":
-                        sync_progress = self.get_sync_progress(last_line)
-                        transferred = sync_progress['transferred_messages']
-                        total = sync_progress['total_messages']
 
-                        eta = sync_progress['eta']
-                        eta_string = eta.strftime('%A %Y-%m-%d %H:%M:%S')
-
-                        if user in jobs['user']:
-                            job_progress.start_task(jobs[user])
-                            job_progress.update(jobs[user],
-                                                total=total, 
-                                                completed=transferred,
-                                                eta=eta_string)
-                        else:
+                    # Add a new job if not exists
+                    if not user in jobs['user']:
                             color = self.pick_random_color()
                             job_title = "[color({})]{}".format(color, username)
                             jobs[username] = job_progress.add_task(job_title,
                                                                 start=False,
                                                                 total=None,
                                                                 eta="?")
+
+                    if sync_status == "syncing":
+                        sync_progress = self.get_sync_progress(last_line)
+                        transferred = sync_progress['transferred_messages']
+                        total = sync_progress['total_messages']
+                        eta = sync_progress['eta']
+                        eta_string = eta.strftime('%A %Y-%m-%d %H:%M:%S')
+
+                        job_progress.start_task(jobs[user])
+                        job_progress.update(jobs[user],
+                                            total=total, 
+                                            completed=transferred,
+                                            eta=eta_string)
 
                         # Calculate maximum ETA
                         eta_timestamp = eta.timestamp()
