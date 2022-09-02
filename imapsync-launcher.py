@@ -89,6 +89,13 @@ class ImapsyncLauncher:
             help="Enable dry run mode (print commands and don't execute them)."
         )
         parser.add_argument(
+            '-y', '--yes', '--assume-yes'
+            default=False,
+            dest='assume_yes',
+            action="store_true",
+            help="Automatic yes to prompts."
+        )
+        parser.add_argument(
             '-i', '--imapsync-path',
             default='imapsync',
             dest='imapsync_path',
@@ -124,6 +131,7 @@ class ImapsyncLauncher:
         self.imapsync_extra = getattr(args, 'imapsync_extra')
         self.debug = getattr(args, 'debug', False)
         self.dry_run = getattr(args, 'dry_run', False)
+        self.assume_yes = getattr(args, 'assume_yes', False)
 
     # Parse the user CSV file
     def parse_csv_file(self, csv_file_path, skip_first_line=False):
@@ -291,12 +299,13 @@ class ImapsyncLauncher:
         users_count = len(users)
 
         # Prompt the number of processes to start and exit if not confirmed
-        msg = "I am going to spawn [bold bright_cyan]{}[/bold bright_cyan] "
-        msg+= " Imapsync processes. Continue?"
-        msg = msg.format(users_count)
-        if not Confirm.ask(msg):
-            print("OK, bye! :waving_hand:")
-            exit(1)
+        if not self.assume_yes:
+            msg = "I am going to spawn [bold bright_cyan]{}[/bold bright_cyan] "
+            msg+= " Imapsync processes. Continue?"
+            msg = msg.format(users_count)
+            if not Confirm.ask(msg):
+                print("OK, bye! :waving_hand:")
+                exit(1)
 
         # Loop users
         for username, user in users.items():
