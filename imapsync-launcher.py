@@ -103,7 +103,7 @@ class ImapsyncLauncher:
         )
         parser.add_argument(
             '-e', '--extra',
-            default=None,
+            default='',
             dest='imapsync_extra',
             help='Extra Imapsync options (will be added to each user process).'
         )
@@ -128,7 +128,7 @@ class ImapsyncLauncher:
         self.skip_first_line = getattr(args, 'skip_first_line')
         self.imapsync_path = getattr(args, 'imapsync_path', 'imapsync')
         self.users_limit = getattr(args, 'users_limit')
-        self.imapsync_extra = getattr(args, 'imapsync_extra')
+        self.imapsync_extra = getattr(args, 'imapsync_extra', '')
         self.debug = getattr(args, 'debug', False)
         self.dry_run = getattr(args, 'dry_run', False)
         self.assume_yes = getattr(args, 'assume_yes', False)
