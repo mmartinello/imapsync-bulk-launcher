@@ -336,10 +336,10 @@ class ImapsyncLauncher:
             if not self.dry_run:
                 process = self.subprocess_exec(imapsync_command_args)
             
-            pid = process.pid
-            msg = "New process for user [b]{}[/b] executed with PID {}"
-            msg = msg.format(username, pid)
-            print(msg)
+                pid = process.pid
+                msg = "New process for user [b]{}[/b] executed with PID {}"
+                msg = msg.format(username, pid)
+                print(msg)
             
 # Main: run program
 if __name__ == "__main__":
