@@ -421,19 +421,26 @@ class ImapsyncStatus:
 
                     sync_status = self.get_sync_status(last_line)
                     if sync_status == "syncing":
-                        job_progress.start_task(jobs[user])
-
                         sync_progress = self.get_sync_progress(last_line)
                         transferred = sync_progress['transferred_messages']
                         total = sync_progress['total_messages']
 
                         eta = sync_progress['eta']
                         eta_string = eta.strftime('%A %Y-%m-%d %H:%M:%S')
-                        
-                        job_progress.update(jobs[user],
-                                            total=total, 
-                                            completed=transferred,
-                                            eta=eta_string)
+
+                        if user in jobs['user']:
+                            job_progress.start_task(jobs[user])
+                            job_progress.update(jobs[user],
+                                                total=total, 
+                                                completed=transferred,
+                                                eta=eta_string)
+                        else:
+                            color = self.pick_random_color()
+                            job_title = "[color({})]{}".format(color, username)
+                            jobs[username] = job_progress.add_task(job_title,
+                                                                start=False,
+                                                                total=None,
+                                                                eta="?")
 
                         # Calculate maximum ETA
                         eta_timestamp = eta.timestamp()
