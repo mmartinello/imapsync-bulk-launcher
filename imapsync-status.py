@@ -331,7 +331,7 @@ class ImapsyncStatus:
             total=None,
             total_users=users_count,
             running_jobs='0',
-            idle_users='?',
+            idle_users=users_count,
             max_eta='?',
         )
         progress_table.add_row(
