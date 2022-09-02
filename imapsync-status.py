@@ -84,7 +84,7 @@ class ImapsyncStatus:
             help='The path of the CSV file containing the list of users'
         )
         parser.add_argument(
-            '--skip-first-line',
+            '-s', '--skip-first-line',
             default=False,
             dest='skip_first_line',
             action="store_true",
