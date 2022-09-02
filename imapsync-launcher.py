@@ -94,6 +94,12 @@ class ImapsyncLauncher:
             help='The maximum number of concurrent jobs to execute (default: the number of CPU cores).'
         )
         parser.add_argument(
+            '-e', '--extra',
+            default=None,
+            dest='imapsync_extra',
+            help='Extra Imapsync options (will be added to each user process).'
+        )
+        parser.add_argument(
             'users_limit',
             metavar='USER',
             type=str,
@@ -114,6 +120,7 @@ class ImapsyncLauncher:
         self.skip_first_line = getattr(args, 'skip_first_line')
         self.imapsync_path = getattr(args, 'imapsync_path', 'imapsync')
         self.users_limit = getattr(args, 'users_limit')
+        self.imapsync_extra = getattr(arfs, 'imapsync_extra')
         self.debug = getattr(args, 'debug', False)
 
     # Parse the user CSV file
@@ -196,8 +203,8 @@ class ImapsyncLauncher:
             self, source_user, source_password, dest_user, dest_host,
             dest_password, imapsync_cmd_path='imapsync',
             source_host='127.0.0.1', source_port=993, source_ssl=True,
-            dest_port=993, dest_ssl=True, extra_params='',
-            return_type='string'):
+            dest_port=993, dest_ssl=True, extra_params=None,
+            global_extra_params=None, return_type='string'):
         
         # Build arguments dictionary
         args = {}
@@ -216,6 +223,14 @@ class ImapsyncLauncher:
         if dest_ssl:
             args['--ssl2'] = ""
 
+        # Extra parameters
+        if extra_params and extra_params != '':
+            extra_params_string = " {}".format(extra_params)
+
+        # Global extra params
+        if global_extra_params and global_extra_params != '':
+            global_extra_params_string = " {}".format(global_extra_params)
+
         # Build the Imapsync arguments from the args dictionary
         imapsync_args = []
         for name, value in args.items():
@@ -227,9 +242,10 @@ class ImapsyncLauncher:
 
         # Build the final Imapsync command
         imapsync_args_string = " ".join(imapsync_args)
-        imapsync_command = "{} {} {}".format(imapsync_cmd_path,
+        imapsync_command = "{} {}{}{}".format(imapsync_cmd_path,
                                              imapsync_args_string,
-                                             extra_params)
+                                             extra_params_string,
+                                             global_extra_params_string)
 
         # If return type is string return the full command string, if args
         # return the command arguments splitted as array
@@ -294,6 +310,7 @@ class ImapsyncLauncher:
                 dest_port=user['dest_port'],
                 dest_ssl=user['dest_ssl'],
                 extra_params=user['extra_params'],
+                global_extra_params=self.imapsync_extra,
                 return_type='args'
             )
 
