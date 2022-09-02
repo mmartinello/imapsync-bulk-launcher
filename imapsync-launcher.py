@@ -302,7 +302,7 @@ class ImapsyncLauncher:
 
         # Prompt the number of processes to start and exit if not confirmed
         if not self.assume_yes:
-            msg = "I am going to spawn [bold bright_cyan]{}[/bold bright_cyan] "
+            msg = "I am going to spawn [bold bright_cyan]{}[/bold bright_cyan]"
             msg+= " Imapsync processes. Continue?"
             msg = msg.format(users_count)
             if not Confirm.ask(msg):
