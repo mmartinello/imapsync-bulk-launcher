@@ -318,6 +318,8 @@ class ImapsyncLauncher:
 
         # Loop users
         for username, user in users.items():
+            pid_file_path = "imapsync-{}.pid".format(username)
+
             imapsync_command_args = self.build_imapsync_cmd(
                 source_user=user['source_user'],
                 source_password=user['source_password'],
@@ -330,6 +332,8 @@ class ImapsyncLauncher:
                 source_ssl=user['source_ssl'],
                 dest_port=user['dest_port'],
                 dest_ssl=user['dest_ssl'],
+                pid_file=pid_file_path,
+                pid_file_locking=True,
                 extra_params=user['extra_params'],
                 global_extra_params=self.imapsync_extra,
                 return_type='args'
