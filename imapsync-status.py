@@ -418,12 +418,12 @@ class ImapsyncStatus:
                 for pid_file in pid_files:
                     log_data = self.parse_pid_file(pid_file)
                     log_file_path = log_data['log_file_path']
-                    user = log_data['user']
+                    username = log_data['user']
                     last_line = self.get_last_line(log_file_path)
                     sync_status = self.get_sync_status(last_line)
 
                     # Add a new job if not exists
-                    if not user in jobs['user']:
+                    if not username in jobs:
                             color = self.pick_random_color()
                             job_title = "[color({})]{}".format(color, username)
                             jobs[username] = job_progress.add_task(job_title,
@@ -438,8 +438,8 @@ class ImapsyncStatus:
                         eta = sync_progress['eta']
                         eta_string = eta.strftime('%A %Y-%m-%d %H:%M:%S')
 
-                        job_progress.start_task(jobs[user])
-                        job_progress.update(jobs[user],
+                        job_progress.start_task(jobs[username])
+                        job_progress.update(jobs[username],
                                             total=total, 
                                             completed=transferred,
                                             eta=eta_string)
