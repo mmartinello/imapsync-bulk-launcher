@@ -346,7 +346,10 @@ class ImapsyncLauncher:
 
             # Executing a new imapsync process
             if not self.dry_run:
-                process = self.subprocess_exec(imapsync_command_args)
+                process = self.subprocess_exec(
+                    imapsync_command_args,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.STDOUT)
             
                 pid = process.pid
                 msg = "New process for user [b]{}[/b] executed with PID {}"
