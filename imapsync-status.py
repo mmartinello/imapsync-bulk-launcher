@@ -189,7 +189,7 @@ class ImapsyncStatus:
         f = open(file_path, 'r')
         data = f.read()  
         user = re.search('imapsync-(.+).pid$', file_path)
-        pid = re.search('^[1-9]+$', data, re.MULTILINE)
+        pid = re.search('^[0-9]+$', data, re.MULTILINE)
         log_file_path = re.search('.+.txt$', data, re.MULTILINE)
 
         return_data = {}
