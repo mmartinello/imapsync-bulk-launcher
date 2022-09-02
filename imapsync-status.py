@@ -12,6 +12,9 @@ authors:
 _VERSION = "1.0"
 _VERSION_DESCR = "Imapsync Status"
 _LOG_FILE_PATH = "imapsync-status.log"
+_COLOR_IDLE = "red3"
+_COLOR_STARTING = "orange3"
+_COLOR_RUNNING = "green3"
 
 import argparse
 import colorlog
@@ -343,8 +346,8 @@ class ImapsyncStatus:
 
         # Main job progress: contains all sync progress jobs
         job_progress = Progress(
-            "{task.description}",
-            SpinnerColumn(),
+            "[{task.color}]{task.description}",
+            SpinnerColumn(spinner_name="{task.spinner}"),
             BarColumn(),
             MofNCompleteColumn(),
             TimeRemainingColumn(),
@@ -367,9 +370,12 @@ class ImapsyncStatus:
                 self.show_running and pid_file_exists
                 ):
                 jobs[username] = job_progress.add_task(job_title,
-                                                       start=False,
-                                                       total=None,
-                                                       eta="?")
+                    start=False,
+                    total=None,
+                    eta="?",
+                    color=_COLOR_IDLE,
+                    spinner="circleQuarters"
+                )
 
         # Add the main job progress row
         progress_table.add_row(
@@ -427,9 +433,12 @@ class ImapsyncStatus:
                             color = self.pick_random_color()
                             job_title = "[color({})]{}".format(color, username)
                             jobs[username] = job_progress.add_task(job_title,
-                                                                start=False,
-                                                                total=None,
-                                                                eta="?")
+                                start=False,
+                                total=None,
+                                eta="?",
+                                color=_COLOR_STARTING,
+                                spinner="simpleDots"
+                            )
 
                     if sync_status == "syncing":
                         sync_progress = self.get_sync_progress(last_line)
@@ -440,9 +449,12 @@ class ImapsyncStatus:
 
                         job_progress.start_task(jobs[username])
                         job_progress.update(jobs[username],
-                                            total=total, 
-                                            completed=transferred,
-                                            eta=eta_string)
+                            total=total,
+                            completed=transferred,
+                            eta=eta_string,
+                            color=_COLOR_RUNNING,
+                            spinner="dots"
+                        )
 
                         # Calculate maximum ETA
                         eta_timestamp = eta.timestamp()
