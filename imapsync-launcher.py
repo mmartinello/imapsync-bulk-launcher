@@ -213,8 +213,8 @@ class ImapsyncLauncher:
             self, source_user, source_password, dest_user, dest_host,
             dest_password, imapsync_cmd_path='imapsync',
             source_host='127.0.0.1', source_port=993, source_ssl=True,
-            dest_port=993, dest_ssl=True, extra_params=None,
-            global_extra_params=None, return_type='string'):
+            dest_port=993, dest_ssl=True, extra_params='',
+            global_extra_params='', return_type='string'):
         
         # Build arguments dictionary
         args = {}
@@ -234,12 +234,13 @@ class ImapsyncLauncher:
             args['--ssl2'] = ""
 
         # Extra parameters
-        if extra_params and extra_params != '':
+        extra_params_string = ''
+        if extra_params != '':
             extra_params_string = " {}".format(extra_params)
 
         # Global extra params
-        global_extra_params_string = None
-        if global_extra_params and global_extra_params != '':
+        global_extra_params_string = ''
+        if global_extra_params != '':
             global_extra_params_string = " {}".format(global_extra_params)
 
         # Build the Imapsync arguments from the args dictionary
