@@ -238,6 +238,7 @@ class ImapsyncLauncher:
             extra_params_string = " {}".format(extra_params)
 
         # Global extra params
+        global_extra_params_string = None
         if global_extra_params and global_extra_params != '':
             global_extra_params_string = " {}".format(global_extra_params)
 
