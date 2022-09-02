@@ -214,8 +214,9 @@ class ImapsyncLauncher:
             dest_password, imapsync_cmd_path='imapsync',
             source_host='127.0.0.1', source_port=993, source_ssl=True,
             dest_port=993, dest_ssl=True, extra_params='',
-            global_extra_params='', return_type='string'):
-        
+            global_extra_params='', return_type='string', pid_file=None,
+            pid_file_locking=True):
+
         # Build arguments dictionary
         args = {}
         args['--host1'] = source_host
@@ -229,9 +230,15 @@ class ImapsyncLauncher:
         
         # SSL arguments
         if source_ssl:
-            args['--ssl1'] = ""
+            args['--ssl1'] = True
         if dest_ssl:
-            args['--ssl2'] = ""
+            args['--ssl2'] = True
+
+        # PID file
+        if pid_file:
+            args['--pidfile'] = pid_file
+        if pid_file_locking:
+            args['--pidfilelocking'] = True
 
         # Extra parameters
         extra_params_string = ''
@@ -246,7 +253,7 @@ class ImapsyncLauncher:
         # Build the Imapsync arguments from the args dictionary
         imapsync_args = []
         for name, value in args.items():
-            if value == "":
+            if value == True:
                 arg_value = "{}".format(name)
             else:
                 arg_value = "{} {}".format(name, value)
