@@ -89,7 +89,7 @@ class ImapsyncLauncher:
             help="Enable dry run mode (print commands and don't execute them)."
         )
         parser.add_argument(
-            '-y', '--yes', '--assume-yes'
+            '-y', '--yes', '--assume-yes',
             default=False,
             dest='assume_yes',
             action="store_true",
