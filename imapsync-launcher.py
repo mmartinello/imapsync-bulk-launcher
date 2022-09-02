@@ -82,6 +82,13 @@ class ImapsyncLauncher:
             help='Skip the first line of the CSV file (default: False).'
         )
         parser.add_argument(
+            '-d', '--dry-run',
+            default=False,
+            dest='dry_run',
+            action="store_true",
+            help="Enable dry run mode (print commands and don't execute them)."
+        )
+        parser.add_argument(
             '-i', '--imapsync-path',
             default='imapsync',
             dest='imapsync_path',
@@ -114,8 +121,9 @@ class ImapsyncLauncher:
         self.skip_first_line = getattr(args, 'skip_first_line')
         self.imapsync_path = getattr(args, 'imapsync_path', 'imapsync')
         self.users_limit = getattr(args, 'users_limit')
-        self.imapsync_extra = getattr(arfs, 'imapsync_extra')
+        self.imapsync_extra = getattr(args, 'imapsync_extra')
         self.debug = getattr(args, 'debug', False)
+        self.dry_run = getattr(args, 'dry_run', False)
 
     # Parse the user CSV file
     def parse_csv_file(self, csv_file_path, skip_first_line=False):
@@ -283,7 +291,8 @@ class ImapsyncLauncher:
         users_count = len(users)
 
         # Prompt the number of processes to start and exit if not confirmed
-        msg = "I am going to spawn [bold bright_cyan]{}[/bold bright_cyan] Imapsync processes. Continue?"
+        msg = "I am going to spawn [bold bright_cyan]{}[/bold bright_cyan] "
+        msg+= " Imapsync processes. Continue?"
         msg = msg.format(users_count)
         if not Confirm.ask(msg):
             print("OK, bye! :waving_hand:")
@@ -308,13 +317,14 @@ class ImapsyncLauncher:
                 return_type='args'
             )
 
-            if self.debug:            
+            if self.debug or self.dry_run:
                 msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}"
                 msg = msg.format(username, imapsync_command_args)
                 print(msg)
 
             # Executing a new imapsync process
-            process = self.subprocess_exec(imapsync_command_args)
+            if not self.dry_run:
+                process = self.subprocess_exec(imapsync_command_args)
             
             pid = process.pid
             msg = "New process for user [b]{}[/b] executed with PID {}"
