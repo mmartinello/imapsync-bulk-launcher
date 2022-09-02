@@ -330,7 +330,7 @@ class ImapsyncStatus:
             "Overall Status:",
             total=None,
             total_users=users_count,
-            running_jobs='?',
+            running_jobs='0',
             idle_users='?',
             max_eta='?',
         )
@@ -394,7 +394,7 @@ class ImapsyncStatus:
         overall_task = overall_progress.add_task(
             "Overall Progress",
             total=None,
-            running_jobs='?'
+            running_jobs='0'
         )
         progress_table.add_row(
             Panel(
