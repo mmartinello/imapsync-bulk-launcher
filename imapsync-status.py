@@ -347,7 +347,7 @@ class ImapsyncStatus:
         # Main job progress: contains all sync progress jobs
         job_progress = Progress(
             "[{task.fields[color]}]{task.description}",
-            SpinnerColumn(spinner_name="{task.fields[spinner]}"),
+            SpinnerColumn(spinner_name="dots"),
             BarColumn(),
             MofNCompleteColumn(),
             TimeRemainingColumn(),
