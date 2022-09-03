@@ -340,7 +340,7 @@ class ImapsyncLauncher:
             )
 
             if self.debug or self.dry_run:
-                imapsync_command = imapsync_command_args.join(' ')
+                imapsync_command = ' '.join(imapsync_command_args)
                 msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}"
                 msg = msg.format(username, imapsync_command)
                 print(msg)
