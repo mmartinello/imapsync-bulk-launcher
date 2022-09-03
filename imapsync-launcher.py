@@ -340,8 +340,9 @@ class ImapsyncLauncher:
             )
 
             if self.debug or self.dry_run:
+                imapsync_command = imapsync_command_args.join(' ')
                 msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}"
-                msg = msg.format(username, imapsync_command_args)
+                msg = msg.format(username, imapsync_command)
                 print(msg)
 
             # Executing a new imapsync process
