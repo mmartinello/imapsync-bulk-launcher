@@ -281,6 +281,11 @@ class ImapsyncLauncher:
         process = subprocess.Popen(args, **kwargs)
         return process
 
+    # Get the PID file name for a given user
+    def get_pid_file_name(self, username):
+        pid_file_name = "imapsync-{}.pid".format(username)
+        return pid_file_name
+
     # Handle & exec function called from main
     def handle(self):
         # Command line parser
@@ -336,25 +341,44 @@ class ImapsyncLauncher:
                 pid_file_locking=True,
                 extra_params=user['extra_params'],
                 global_extra_params=self.imapsync_extra,
+                pid_file_locking=True,
                 return_type='args'
             )
 
+            # Check if a PID file already exists for the current user
+            pid_file_exists = os.path.exists(username)
+
+            # Print debug command message
             if self.debug or self.dry_run:
                 imapsync_command = ' '.join(imapsync_command_args)
-                msg = "[red]Imapsync command for user [b]{}[/b]:[/red] {}"
-                msg = msg.format(username, imapsync_command)
+
+                if pid_file_exists:
+                    action = "[underline]NOT Executing (already running)"
+                    action+= "[/underline]"
+                else:
+                    action = "Executing"
+
+                msg = "[red]{} Imapsync command for user [b]{}[/b]:[/red] {}"
+                msg = msg.format(action, username, imapsync_command)
                 print(msg)
 
             # Executing a new imapsync process
             if not self.dry_run:
-                process = self.subprocess_exec(
-                    imapsync_command_args,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.STDOUT)
-            
-                pid = process.pid
-                msg = "New process for user [b]{}[/b] executed with PID {}"
-                msg = msg.format(username, pid)
+                if pid_file_exists:
+                    msg = "[underline]NOT Executing (already running)"
+                    msg+= " for user [b]{}[/b]"
+                    msg = msg.format(username)
+                else:
+                    process = self.subprocess_exec(
+                        imapsync_command_args,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.STDOUT)
+                
+                    pid = process.pid
+
+                    msg = "New process for user [b]{}[/b] executed with PID {}"
+                    msg = msg.format(username, pid)
+                
                 print(msg)
             
 # Main: run program
