@@ -341,7 +341,6 @@ class ImapsyncLauncher:
                 pid_file_locking=True,
                 extra_params=user['extra_params'],
                 global_extra_params=self.imapsync_extra,
-                pid_file_locking=True,
                 return_type='args'
             )
 
