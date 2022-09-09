@@ -345,7 +345,7 @@ class ImapsyncLauncher:
             )
 
             # Check if a PID file already exists for the current user
-            pid_file_exists = os.path.exists(username)
+            pid_file_exists = os.path.exists(self.get_pid_file_name(username))
 
             # Print debug command message
             if self.debug or self.dry_run:
